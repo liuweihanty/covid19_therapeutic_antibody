@@ -1,0 +1,90 @@
+---
+title: "COVID19_Visual"
+author: "Weihan Liu"
+date: "18/05/2020"
+output: html_document
+---
+
+```{r}
+covid <- read.csv("/Users/weihan/Desktop/华人抗体协会/covid_analysis/Data/Covid19_Ab_Track.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+```{r}
+# Install
+install.packages("tm")  # for text mining
+install.packages("SnowballC") # for text stemming
+install.packages("wordcloud") # word-cloud generator 
+
+# Load
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+```
+
+#Targets
+
+Import text
+```{r}
+text <- readLines(file.choose())
+docs <- Corpus(VectorSource(text))
+```
+
+Clean the text
+```{r}
+connect <- content_transformer(function (x , pattern ) gsub(pattern, "-", x))
+```
+
+
+Build a term-document matrix
+```{r}
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+Generate word clond
+```{r}
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+#Discovery Platform
+Import text
+```{r}
+text.dp <- readLines(file.choose())
+docs.dp <- Corpus(VectorSource(text.dp))
+```
+
+Clean the text
+```{r}
+# Convert the text to lower case
+docs.dp <- tm_map(docs.dp, content_transformer(tolower))
+```
+
+
+Build a term-document matrix
+```{r}
+dtm.dp <- TermDocumentMatrix(docs.dp)
+m.dp <- as.matrix(dtm.dp)
+v.dp <- sort(rowSums(m.dp),decreasing=TRUE)
+d.dp <- data.frame(word = names(v.dp),freq=v.dp)
+head(d.dp, 10)
+```
+
+Generate word clond
+```{r}
+set.seed(1234)
+wordcloud(words = d.dp$word, freq = d.dp$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, #rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+

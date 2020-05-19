@@ -1,0 +1,25 @@
+---
+title: "covid19_visualisation"
+author: "Weihan Liu"
+date: "19/05/2020"
+output: html_document
+---
+
+```{r}
+
+covid <- read.csv("/Users/weihan/Desktop/华人抗体协会/covid_analysis/Data/Covid19_Ab_Track.csv", header = TRUE, stringsAsFactors = FALSE)
+
+```
+
+Subset out companies
+```{r}
+company <- covid %>%
+        dplyr::select(c("Developer.Reseacher","ID","Campaign.ID"))
+
+company <- separate(company, Developer.Reseacher, into = c("company1","company2","company3","company4","company5","company6","company7","company8"),sep = "/")
+
+company <- gather(company[1:8],key = "company",value = "count") 
+company <- company[2]
+
+```
+
