@@ -8,7 +8,7 @@ output: html_document
 ```{r}
 
 covid <- read.csv("/Users/weihan/Desktop/华人抗体协会/covid_analysis/Data/Covid19_Ab_Track.csv", header = TRUE, stringsAsFactors = FALSE)
-
+str(covid)
 ```
 
 Subset out companies
@@ -21,5 +21,66 @@ company <- separate(company, Developer.Reseacher, into = c("company1","company2"
 company <- gather(company[1:8],key = "company",value = "count") 
 company <- company[2]
 
+```
+
+
+Visualize country
+```{r}
+country <- covid %>%
+        dplyr::select(c("Country","ID"))
+str(country)
+
+#extract the country column as a vector
+country_vec <- country$Country
+
+#split the rows with multiple countries by their seperator "/" anbd update the country vector
+country_vec <- strsplit(country_vec,split = "/") %>% unlist() 
+
+country_vec <- as.data.frame(table(country_vec)) 
+
+country <- dplyr::rename(country_vec,
+                      Country = country_vec,
+                      number_in_development = Freq)
+
+
+#order by the value of  number_in_development
+country <- country[order(country$number_in_development,decreasing = TRUE),]
+```
+
+Plotting using plotly
+```{r}
+library(plotly)
+country_test <- reorder(country$Country,-country$number_in_development)
+country_plot <- ggplot(data = country, aes(x = Country, y = number_in_development)) +                    geom_bar(stat = "identity",fill='steelblue') +
+                theme(axis.text.x=element_text(angle=45, hjust=1)) + 
+                ylab("numbers in development") +
+                xlab("Countries") +
+                ggtitle("Numbers of Therapeutics Antibodies in Development by country")
+
+country_fig <- ggplotly(country_plot)
+
+country_fig
+
+
+
+htmlwidgets::saveWidget(country_fig, file = "/Users/weihan/Desktop/by_country.html")        
+```
+
+build a plotly dash
+```{r}
+library(dash)
+library(dashCoreComponents)
+library(dashHtmlComponents)
+
+app <- Dash$new()
+app$layout(
+    htmlDiv(
+        list(
+            dccGraph(figure=country_fig) 
+        )
+     )
+)
+
+app$run_server(debug=TRUE, dev_tools_hot_reload=FALSE)
 ```
 
