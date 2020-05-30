@@ -6,12 +6,16 @@ output: html_document
 ---
 
 ```{r}
+library(RCurl) #for fetching google spreadsheet data
+library(mosaic)
 
-covid <- read.csv("/Users/weihan/Desktop/华人抗体协会/covid_analysis/Data/Covid19_Ab_Track.csv", header = TRUE, stringsAsFactors = FALSE)
+covid <- getURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRcKtlvdTC90b8Qs0SMoqFmfXPiEjAwzA_gZ_nsqZEvjA0htzCr1HeAMKdfeeMH7nFyz1p-F4_Lmj1W/pub?output=csv")
+covid <- read.csv(textConnection(covid))
+
 str(covid)
 ```
 
-Subset out companies
+Company Analysis
 ```{r}
 company <- covid %>%
         dplyr::select(c("Developer.Reseacher","ID","Campaign.ID"))
@@ -24,12 +28,80 @@ company <- company[2]
 ```
 
 
-Visualize country
+Country Analysis
 ```{r}
 country <- covid %>%
-        dplyr::select(c("Country","ID"))
-str(country)
+        dplyr::select(c("Country","Status"))
+country$Country <- as.character(country$Country)
+country$Status <- as.character(country$Status)
 
+country <- separate(country,Country,into =
+             c("1","2","3","4","5","6","7","8","9","10"))
+```
+
+```{r}
+sub_piece <- country[c(1,ncol(country))]
+for (i in 2:(ncol(country)-1)) {
+    sub_piece_next <- country[c(i,ncol(country))]
+    names(sub_piece) <- names(sub_piece_next) 
+    sub_piece <- rbind(sub_piece,sub_piece_next)
+}
+
+sub_piece <- sub_piece %>% 
+    rename(country = "10") %>%
+    data.table::setorder(country) %>%
+    filter(is.na(country) == FALSE)
+    
+#get rid of unknown clinical status
+sub_piece <- filter(sub_piece, Status != "Unknown")
+#add a counter column
+sub_piece <- mutate(sub_piece,count = 1)
+
+table(sub_piece$Status)
+```
+Plotting
+```{r}
+library(plotly)
+library(viridis)
+library(hrbrthemes)
+library(forcats)
+
+#order the clinical status column
+sub_piece$Status <- factor(sub_piece$Status, levels = c("Phase 3","Phase 2/3","Phase 2","Phase 1/2","Phase 1","Preclinical"))
+
+country_plot <- ggplot(data = sub_piece, aes(x = fct_infreq(country), y = count, fill = Status)) + 
+    geom_bar(position = "stack",stat = "identity") +
+    #scale_fill_viridis(discrete = T,direction = -1) +
+    #theme_ipsum() +
+    scale_fill_brewer(palette ="RdBu") +
+    theme_minimal()+
+    theme(axis.text.x=element_text(angle=45, hjust=1)) + 
+    ylab("numbers of antibody therapeutics in development") +
+    xlab("Countries") +
+    ggtitle("Status of antibody therapeutics by country") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    coord_cartesian(ylim = c(0, 70))
+    
+
+country_plot
+
+#convert to a plotly plot
+country_fig <- ggplotly(country_plot)
+
+country_fig
+
+
+
+htmlwidgets::saveWidget(country_fig, file = "/Users/weihan/Desktop/by_country.html")        
+```
+
+
+
+
+
+
+Just plot the total number of Ab in devlopment for each country without clinical status information
+```{r}
 #extract the country column as a vector
 country_vec <- country$Country
 
@@ -45,13 +117,15 @@ country <- dplyr::rename(country_vec,
 
 #order by the value of  number_in_development
 country <- country[order(country$number_in_development,decreasing = TRUE),]
+
 ```
 
 Plotting using plotly
 ```{r}
 library(plotly)
-country_test <- reorder(country$Country,-country$number_in_development)
-country_plot <- ggplot(data = country, aes(x = Country, y = number_in_development)) +                    geom_bar(stat = "identity",fill='steelblue') +
+
+country_plot <- ggplot(data = country, aes(x = Country, y = number_in_development)) +                    
+                geom_bar(stat = "identity",fill='steelblue') +
                 theme(axis.text.x=element_text(angle=45, hjust=1)) + 
                 ylab("numbers in development") +
                 xlab("Countries") +
