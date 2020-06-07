@@ -60,7 +60,8 @@ sub_piece <- mutate(sub_piece,count = 1)
 
 table(sub_piece$Status)
 sub_piece[sub_piece == "Phase I"] <- "Phase 1"
-
+sub_piece <- sub_piece %>% filter(country != "South") 
+sub_piece[sub_piece == "Korea"] <- "South Korea"
 ```
 Plotting
 ```{r}
