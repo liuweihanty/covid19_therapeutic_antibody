@@ -49,19 +49,20 @@ for (i in 2:(ncol(country)-3)) {
 }
 
 sub_piece <- sub_piece %>% 
-    rename(country = "10") %>%
+    dplyr::rename(country = "10") %>%
     data.table::setorder(country) %>%
     filter(is.na(country) == FALSE)
     
 #get rid of unknown clinical status
-sub_piece <- filter(sub_piece, Status != "Unknown")
+sub_piece <- filter(sub_piece, Status != "Unknown") %>% na.omit()
 #add a counter column
 sub_piece <- mutate(sub_piece,count = 1)
 
 table(sub_piece$Status)
-sub_piece[sub_piece == "Phase I"] <- "Phase 1"
 sub_piece <- sub_piece %>% filter(country != "South") 
 sub_piece[sub_piece == "Korea"] <- "South Korea"
+sub_piece <- filter(sub_piece,!(country %in% c("centers","contries","in","medical","multiple","UL")))
+
 ```
 Plotting
 ```{r}
@@ -84,10 +85,10 @@ country_plot <- ggplot(data = sub_piece, aes(x = fct_infreq(country), y = count,
     xlab("Countries") +
     ggtitle("Status of Antibody Therapeutics by Country") +
     theme(plot.title = element_text(hjust = 0.5)) +
-    coord_cartesian(ylim = c(0, 80)) 
+    coord_cartesian(ylim = c(0, 80))
     
-    
-    
+   
+
 
 country_plot
 
