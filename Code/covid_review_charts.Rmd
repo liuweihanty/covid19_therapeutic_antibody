@@ -1,0 +1,303 @@
+---
+title: "Covid_review_figures"
+author: "Weihan Liu"
+date: "30/06/2020"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(stats)
+```
+
+
+```{r}
+covid_df <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track2020_07_03.xlsx")
+str(covid_df)
+```
+
+Targets 
+1.Bar chart 
+```{r}
+library(data.table)
+library(tibble)
+#subset out only the targets column
+target_df <- select(covid_df,"Target")
+
+#count number of apperance of each target
+target_df <- count(target_df,Target)
+
+#create a "others" row to hold the numnber of "Others"
+target_df <- rbind(target_df,c("Others",0))
+
+#convert the count column to numeric datatype
+target_df$n <- as.numeric(target_df$n)
+
+
+#split the target data frame to two
+#1.every target with only 1 count aggregated as others:
+target_df_main <- filter(target_df,n > 1)
+#2.All the target with only one count
+target_df_ones <- filter(target_df,n == 1) 
+
+#sort target_df_main by counts
+target_df_main <- target_df_main %>% 
+        arrange(n) %>% 
+        mutate(Target = factor(Target,Target))
+
+```
+
+```{r,fig.width=7,fig.height=5}
+#plot the most abundant targets
+target_df_main %>% ggplot(aes(x = Target,y = n)) +
+        geom_bar(stat = "identity",fill = "steelblue",width = 0.7) + 
+        #geom_text(aes(label= ), position=position_dodge(width=0.9), vjust=-0.25)+
+        coord_flip() +
+        geom_text(aes(label = n),position = position_dodge(width = 0.9),hjust = -0.3)+
+        theme(panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.background = element_blank(), 
+              axis.line = element_line(colour = "black"),
+              axis.text.x = element_text(size = 12,face =   "bold",angle = 45),
+              axis.text.y = element_text(size = 12,face = "bold"),
+              plot.title = element_text(vjust = 3,face = "bold"),
+              axis.title = element_text(size = 15)) +
+              ylab("Counts") +
+              xlab("Targets") +
+              #ggtitle("Distribution of Targets") +
+              NULL
+
+
+setwd("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data")
+ggsave("Targets_bar.png", dpi=600, height=8, width=7, units="in")
+```
+
+2.donut chart: Target
+data processing
+```{r,fig.height=7,fig.width=7}
+library(ggrepel)
+#create a new data frame containing the number of each target
+target_pct <- table(covid_df$Target) %>%
+        as.data.frame() %>%
+        rename(Target = Var1,
+               Amount = Freq)
+target_pct$Target <- as.character(target_pct$Target)
+#combine all of the targets that only have a value smaller or equal to 2 into "others"
+target_pct <- rbind(target_pct,c("Others",sum(filter(target_pct,Amount <= 2)$Amount)))
+target_pct$Amount <- as.numeric(target_pct$Amount)
+target_pct <- filter(target_pct,Amount > 2) 
+
+#compute percentage
+target_pct$Percent <- round(target_pct$Amount/sum(target_pct$Amount) * 100,digits = 2) 
+
+#compute cumulative percentage(top of each rectangle)
+target_pct$y_max <- cumsum(target_pct$Percent)
+
+#compute the bottom of each rectangle
+target_pct$y_min <- c(0, head(target_pct$y_max, n=-1))
+
+#compute the label position
+target_pct$label_position <- (target_pct$y_max + target_pct$y_min)/2
+
+# Compute a good label
+target_pct$label <- paste0(target_pct$Target, ": ",target_pct$Amount, " (",target_pct$Percent,"%",")")
+
+#create a column specifying the label color
+target_pct <- target_pct %>% 
+        mutate(label_color = c("#000000","#000000","#000000","#FFFFFF","#000000","#FFFFFF"))
+```
+
+
+Target donut chart plotting
+```{r}
+#create your own palette, we have 6 categories, so choose 6 colors
+my_cols = c("#EFC000FF","#1E90FF", "#CD853F","#868686FF", "#CD534CFF","#87CEFA")
+
+
+ggplot(target_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Target)) +
+  geom_rect() +
+  geom_label_repel(x=3.5, aes(y=label_position, label=label), 
+                   color = target_pct$label_color,
+                   size=5,nudge_x = 0.5,segment.alpha = 0,
+                   fontface = "bold") +
+  scale_fill_manual(values =my_cols) +
+  coord_polar(theta="y") +
+  xlim(c(1, 4)) +
+  theme_void() +
+  ggtitle("Distribution of Targets") +
+  theme(legend.position = "none",
+  plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =20))+
+  NULL
+
+ggsave("Targets_donut.png", dpi=600, height=8, width=8, units="in")
+```
+
+```{r}
+table(format_df$Format)
+```
+
+Format Donut chart
+Data processing
+```{r}
+#subset out only the targets column
+format_df <- select(covid_df,"Format")
+
+#create a new data frame containing the number of each format
+format_pct <- table(format_df$Format) %>%
+        as.data.frame() %>%
+        rename(Format = Var1,
+               Amount = Freq)
+
+format_pct$Format <- as.character(format_pct$Format)
+format_pct$Amount <- as.numeric(format_pct$Amount)
+#modify names to be consistent with capitalization
+format_pct$Format <- Hmisc::capitalize(format_pct$Format)
+
+#We will only list the major formats: mAb,polyclonal Abs,single-domain Ab,Bi-specific mAb,Tri-specific mAb,fusion protein. All other format will be listed as others, let's first calculate how many are in the others category
+format_pct <- filter(format_pct,Format %in% c("MAb","Polyclonal Abs",
+                     "Single-domain Ab",
+                     "Bi-specific mAb","Tri-specific mAb",
+                     "Fusion protein")) %>% tibble::add_row(Format = "Others",Amount = 4)
+
+#compute percentage
+format_pct$Percent <- round(format_pct$Amount/sum(format_pct$Amount) * 100,digits = 2) 
+
+#compute cumulative percentage(top of each rectange)
+format_pct$y_max <- cumsum(format_pct$Percent)
+
+#compute the bottom of each rectangle
+format_pct$y_min <- c(0, head(format_pct$y_max, n=-1))
+
+#compute the label position
+format_pct$label_position <- (format_pct$y_max + format_pct$y_min)/2
+
+# Compute a good label
+format_pct$label <- paste0(format_pct$Format, ": ",format_pct$Amount, " (",format_pct$Percent,"%",")")
+```
+
+Make the Donut Plot: Format
+```{r,fig.width=10,fig.height=10}
+my_col_format <- c("#FFD700",#gold
+                   "#FFA07A",#light salmon
+                   "#87CEFA",#light sky blue
+                       "#40E0D0",#turquoise
+                       "#1E90FF",#dodger blue
+                       "#800000",#marppn
+                       "#D3D3D3") #light grey
+
+#add a column specifying label color
+
+
+
+format_pct <- format_pct %>% 
+        mutate(label_color = c("#000000","#000000","#000000","#FFFFFF","#FFFFFF","#000000","#000000"))
+
+ggplot(format_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Format)) +
+  geom_rect() +
+  geom_label_repel(x=3.5, aes(y=label_position, label=label),
+                   color = format_pct$label_color,
+                   size=5,nudge_x = 0.8,
+                   segment.alpha = 0,
+                   fontface = "bold",
+                   show.legend = FALSE) +
+  scale_fill_manual(values= my_col_format ) +
+  coord_polar(theta="y") +
+  xlim(c(1, 4)) +
+  theme_void() +
+  ggtitle("Distribution of Antibody Format") +
+  theme(legend.position = "none",
+        plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =20))+
+  NULL
+
+ggsave("Format_donut.png", dpi=600, height=8, width=8, units="in")
+```
+
+
+
+
+
+Clinical Status donut chart
+```{r}
+library(car)
+#create a new data frame containing the number of each target
+clinic_status_pct <- table(covid_df$Status) %>%
+        as.data.frame() %>%
+        rename(Status = Var1,
+               Amount = Freq)
+
+clinic_status_pct$Status <- as.character(clinic_status_pct$Status)
+#get rid of the unknown status
+clinic_status_pct <- filter(clinic_status_pct,Status != "Unknown")
+
+#change the phase number to roman numbers for better graphical representation
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 1"] <- "Phase I"
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 1/2"] <- "Phase I/II"
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 1/2/3"] <- "Phase I/II/III"
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 2"] <- "Phase II"
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 2/3"] <- "Phase II/III"
+clinic_status_pct$Status[clinic_status_pct$Status == "Phase 3"] <- "Phase III"
+
+#create a pordering column that index the different status in the correct order
+clinic_status_pct <- cbind(clinic_status_pct,
+                          c(10,3,1,4,5,9,6,7,8,2))
+clinic_status_pct <- rename(clinic_status_pct,order ="c(10, 3, 1, 4, 5, 9, 6, 7, 8, 2)")
+                                 
+
+#sort clinic_status_pct by the index column
+clinic_status_pct <- clinic_status_pct %>% 
+        arrange(order) %>% 
+        mutate(Status = factor(Status,Status))
+
+#compute percentage
+clinic_status_pct$Percent <- round(clinic_status_pct$Amount/sum(clinic_status_pct$Amount) * 100,digits = 2) 
+
+#compute cumulative percentage(top of each rectange)
+clinic_status_pct$y_max <- cumsum(clinic_status_pct$Percent)
+
+#compute the bottom of each rectangle
+clinic_status_pct$y_min <- c(0, head(clinic_status_pct$y_max, n=-1))
+
+#compute the label position
+clinic_status_pct$label_position <- (clinic_status_pct$y_max + clinic_status_pct$y_min)/2
+
+# Compute a good label
+clinic_status_pct$label <- paste0(clinic_status_pct$Status, ": ",clinic_status_pct$Amount, " (",clinic_status_pct$Percent,"%",")")
+
+```
+
+Make the Donut Plot
+```{r,fig.height=7,fig.width=7}
+#continuous color scale, I have 10 levels, so 5 color on the blue scale and 5 color on the red scale
+#my_col_cli_status <- c("#0080FF","#3399FF","#66B2FF","#99CCFF","#CCE5FF","#FFCCCC","#FF9999","#FF6666","#FF3333","#FF0000")
+my_col_cli_status <- c("#0000CD","#3399FF","#66B2FF","#99CCFF","#CCE5FF","#FFCCCC","#FF9999","#FF6666","#FF3333","#B22222")
+
+#add a column specifying label color
+
+clinic_status_pct <-
+        clinic_status_pct %>% 
+        mutate(label_color = c("#FFFFFF","#FFFFFF","#000000","#000000","#000000","#000000","#000000","#000000","#FFFFFF","#FFFFFF"))
+
+ggplot(clinic_status_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Status)) +
+  geom_rect() +
+  geom_label_repel(x=3.5, aes(y=label_position, label=label),
+                   color = clinic_status_pct$label_color,
+                   size=5,nudge_x = 0.4,
+                   segment.alpha = 0,
+                   fontface = "bold") +
+  scale_fill_manual(values= my_col_cli_status) +
+  coord_polar(theta="y") +
+  xlim(c(1, 4)) +
+  theme_void() +
+  ggtitle("Distribution of Clinical Trial Status") +
+  theme(legend.position = "none",
+  plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =20))+
+  NULL
+
+ggsave("Clinical_status_donut.png", dpi=600, height=8, width=8, units="in")
+```
+
+
+
+
