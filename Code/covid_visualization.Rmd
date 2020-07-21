@@ -12,7 +12,7 @@ library(tidyr)
 library(readxl)
 # covid <- getURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRcKtlvdTC90b8Qs0SMoqFmfXPiEjAwzA_gZ_nsqZEvjA0htzCr1HeAMKdfeeMH7nFyz1p-F4_Lmj1W/pub?output=csv")
 # covid <- read.csv(textConnection(covid))
-covid <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track2020_07_03.xlsx")
+covid <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track_2020_07_20.xlsx")
 covid <- as.data.frame(covid)
 ```
 
@@ -45,13 +45,6 @@ sub_piece <- filter(sub_piece, Status != "Unknown") %>% na.omit()
 #add a counter column
 sub_piece <- mutate(sub_piece,count = 1)
 
-#change all the clinical status number to roman numbers
-sub_piece$Status[sub_piece$Status == "Phase 1"] <- "Phase I"
-sub_piece$Status[sub_piece$Status == "Phase 1/2"] <- "Phase I/II"
-sub_piece$Status[sub_piece$Status == "Phase 1/2/3"] <- "Phase I/II/III"
-sub_piece$Status[sub_piece$Status == "Phase 2"] <- "Phase II"
-sub_piece$Status[sub_piece$Status == "Phase 2/3"] <- "Phase II/III"
-sub_piece$Status[sub_piece$Status == "Phase 3"] <- "Phase III"
 
 
 sub_piece <- sub_piece %>% filter(country != "South") 
@@ -72,7 +65,7 @@ library(hrbrthemes)
 library(forcats)
 
 #order the clinical status column
-sub_piece$Status <- factor(sub_piece$Status, levels = c("Approved","Phase I/II/III","Phase III","Phase II/III","Phase II","Phase I/II","Phase I","Clinical pending","Preclinical","Discovery"))
+sub_piece$Status <- factor(sub_piece$Status, levels = c("Approved","Phase 1/2/3","Phase 3","Phase 2/3","Phase 2","Phase 1/2","Phase 1","Clinical pending","Preclinical","Discovery"))
 
 country_plot <- ggplot(data = sub_piece, aes(x = fct_infreq(country), y = count, fill = Status)) + 
     geom_bar(position = "stack",stat = "identity") +
@@ -80,21 +73,20 @@ country_plot <- ggplot(data = sub_piece, aes(x = fct_infreq(country), y = count,
     #theme_ipsum() +
     scale_fill_brewer(palette ="RdBu") +
     theme_classic()+
-    theme(axis.text.x=element_text(size = 12,angle=45, hjust=1,face = "bold"),
+    theme(axis.text.x=element_text(size = 11,angle=45, hjust=1,face = "bold"),
           axis.text.y=element_text(size = 12,face = "bold"),
-          axis.title = element_text(size = 12),
-          plot.title = element_text(vjust = 2,face = "bold")) + 
+          axis.title = element_text(size = 12)) + 
     ylab("Numbers in Development") +
     xlab("Countries") +
-    ggtitle("Status of Antibody Therapeutics by Country") +
-    theme(plot.title = element_text(hjust = 0.5))+
-    theme(legend.title = element_text(size = 14,face = 'bold'),
-          legend.text = element_text(size = 12)) +
+    ggtitle("Development Status by Country") +
+    theme(plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size = 15))+
+    theme(legend.title = element_text(size = 12,face = 'bold'),
+          legend.text = element_text(size = 10)) +
     coord_cartesian(ylim = c(0, 80))
     
   
 country_plot
-ggsave("fig3_clinical_status_by_country.png", dpi=600, height=6, width=10, units="in")
+ggsave("Fig_2B_Dev_status_by_country.tiff", dpi=300, height=5, width=7.5, units="in")
 ```
 
 
