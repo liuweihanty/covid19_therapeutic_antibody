@@ -12,7 +12,7 @@ library(tidyr)
 library(readxl)
 # covid <- getURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRcKtlvdTC90b8Qs0SMoqFmfXPiEjAwzA_gZ_nsqZEvjA0htzCr1HeAMKdfeeMH7nFyz1p-F4_Lmj1W/pub?output=csv")
 # covid <- read.csv(textConnection(covid))
-covid <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track_2020_07_20.xlsx")
+covid <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track_20200808.xlsx")
 covid <- as.data.frame(covid)
 ```
 
@@ -86,7 +86,7 @@ country_plot <- ggplot(data = sub_piece, aes(x = fct_infreq(country), y = count,
     
   
 country_plot
-ggsave("Fig_2B_Dev_status_by_country.tiff", dpi=300, height=5, width=7.5, units="in")
+ggsave("Fig_3B_Dev_status_by_country.jpg", dpi=300, height=5, width=7.5, units="in")
 ```
 
 

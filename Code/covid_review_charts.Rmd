@@ -14,68 +14,13 @@ library(stats)
 
 
 ```{r}
-covid_df <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track_2020_07_20.xlsx")
+covid_df <- read_excel("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data/Covid19_Ab_Track_20200808.xlsx")
 str(covid_df)
 ```
 
-Targets 
-1.Bar chart 
-```{r}
-library(data.table)
-library(tibble)
-#subset out only the targets column
-target_df <- select(covid_df,"Target")
 
-#count number of apperance of each target
-target_df <- count(target_df,Target)
-
-#create a "others" row to hold the numnber of "Others"
-target_df <- rbind(target_df,c("Others",0))
-
-#convert the count column to numeric datatype
-target_df$n <- as.numeric(target_df$n)
-
-
-#split the target data frame to two
-#1.every target with only 1 count aggregated as others:
-target_df_main <- filter(target_df,n > 1)
-#2.All the target with only one count
-target_df_ones <- filter(target_df,n == 1) 
-
-#sort target_df_main by counts
-target_df_main <- target_df_main %>% 
-        arrange(n) %>% 
-        mutate(Target = factor(Target,Target))
-
-```
-
-```{r,fig.width=7,fig.height=5}
-#plot the most abundant targets
-target_df_main %>% ggplot(aes(x = Target,y = n)) +
-        geom_bar(stat = "identity",fill = "steelblue",width = 0.7) + 
-        #geom_text(aes(label= ), position=position_dodge(width=0.9), vjust=-0.25)+
-        coord_flip() +
-        geom_text(aes(label = n),position = position_dodge(width = 0.9),hjust = -0.3)+
-        theme(panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(),
-              panel.background = element_blank(), 
-              axis.line = element_line(colour = "black"),
-              axis.text.x = element_text(size = 12,face =   "bold",angle = 45),
-              axis.text.y = element_text(size = 12,face = "bold"),
-              plot.title = element_text(vjust = 3,face = "bold"),
-              axis.title = element_text(size = 15)) +
-              ylab("Counts") +
-              xlab("Targets") +
-              #ggtitle("Distribution of Targets") +
-              NULL
-
-
-setwd("/Users/weihan/Desktop/华人抗体协会/covid_analysis/covid19_therapeutic_antibody/Data")
-ggsave("Targets_bar.png", dpi=600, height=8, width=7, units="in")
-```
-
-2.donut chart: Target
-data processing
+#Target pie chart
+##data processing
 ```{r,fig.height=7,fig.width=7}
 library(ggrepel)
 #create a new data frame containing the number of each target
@@ -110,7 +55,7 @@ target_pct <- target_pct %>%
 ```
 
 
-Target donut chart plotting
+##plot
 ```{r,fig.width=10,fig.height=10,out.width = "15in",fig.margin = TRUE}
 #donut chart
 #create your own palette, we have 6 categories, so choose 6 colors
@@ -132,22 +77,27 @@ ggplot(target_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Target)) +
   plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =30))+
   NULL
 
-ggsave("Fig_2A_Targets_pie.jpg", dpi=300, height=7, width=7, units="in")
+
+ggsave("Fig_2A_Targets_pie.tiff", dpi=300, height=7, width=7, units="in")
 ```
 
 Make another version of the target Pie chart for cover image
 ```{r}
+#give two examples of "others" category in the label
+target_pct_cover <- target_pct
+target_pct_cover$label[target_pct_cover$label == "Others: 47 (31%)"] <- "Others(TNF,IL-17A etc.): 47 (31%)"
+  
 #We will use red to highlight s protein and light blu colors to label the rest
 my_cols_cover_target = c("#0080FF","#111E6C", "#0E4D92","#0F52BA","#008ECC","#CD534CFF")
 #create a column specifying the label color
-target_pct <- target_pct %>% 
+target_pct_cover <- target_pct_cover %>% 
         mutate(label_color_cover = c("#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF"))
 
 
-ggplot(target_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Target)) +
+ggplot(target_pct_cover, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Target)) +
   geom_rect() +
   geom_label_repel(x=3.5, aes(y=label_position, label=label), 
-                   color = target_pct$label_color_cover,
+                   color = target_pct_cover$label_color_cover,
                    size=8,nudge_x = 0.5,segment.alpha = 0,
                    fontface = "bold") +
   scale_fill_manual(values =my_cols_cover_target) +
@@ -161,6 +111,9 @@ ggplot(target_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Target)) +
 
 ggsave("Fig_2A_Targets_pie_cover.jpg", dpi=600, height=7, width=7, units="in")
 ```
+
+
+
 
 Format Donut chart
 Data processing
@@ -199,6 +152,9 @@ format_pct$label_position <- (format_pct$y_max + format_pct$y_min)/2
 
 # Compute a good label
 format_pct$label <- paste0(format_pct$Format, ": ",format_pct$Amount, " (",format_pct$Percent,"%",")")
+
+#manually change the fusion protein label to 4%, just to make sure all the pct add up to 100%
+format_pct$label[format_pct$label == "Fusion protein: 7 (5%)"] <- "Fusion protein: 7 (4%)"
 ```
 
 Make the Donut Plot: Format
@@ -237,7 +193,7 @@ ggplot(format_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Format)) +
         plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =30))+
   NULL
 
-ggsave("Fig_1B_Format_donut.tiff", dpi=300, height=7.5, width=7.5, units="in")
+ggsave("Fig_1B_Format_donut.jpg", dpi=300, height=7.5, width=7.5, units="in")
 ```
 
 
@@ -314,23 +270,25 @@ ggplot(clinic_status_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Statu
   plot.title = element_text(vjust = 2,hjust = 0.5,face = "bold",size =30))+
   NULL
 
-ggsave("Fig_2A_Dev_status_donut.jpg", dpi=300, height=7.5, width=7.5, units="in")
+ggsave("Fig_3A_Dev_status_donut.tiff", dpi=300, height=7.5, width=7.5, units="in")
 ```
 
 #make another version of developmental status pie char for the cover
 ```{r}
+
+clinic_status_pct_cover <- clinic_status_pct
 my_col_cli_status_cover <- c("#fbd3d0","#f6c4bd","#f0b5ab","#eaa598","#e39687","#dc8775","#cd6a55","#ba4831","#a82512","#9e0500")
 
 #add a column specifying label color
 
-clinic_status_pct <-
-        clinic_status_pct %>% 
+clinic_status_pct_cover <-
+        clinic_status_pct_cover %>% 
         mutate(label_color_cover = c("#000000","#000000","#000000","#000000","#000000","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF"))
 
-ggplot(clinic_status_pct, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Status)) +
+ggplot(clinic_status_pct_cover, aes(ymax=y_max, ymin=y_min, xmax=4, xmin=3, fill=Status)) +
   geom_rect() +
   geom_label_repel(x=3.5, aes(y=label_position, label=label),
-                   color = clinic_status_pct$label_color_cover,
+                   color = clinic_status_pct_cover$label_color_cover,
                    size=7,nudge_x = 0.4,force = 5,
                    segment.alpha = 0,
                    fontface = "bold") +
